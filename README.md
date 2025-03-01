@@ -167,4 +167,5 @@ That's it! To learn more about CMake itself, consult the [CMake.org](https://cma
 
 ### License
 
-CMake-Maven-Plugin is released under an [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+* This library is distributed under the terms of the [Apache License 2.0](https://www.apache.org/licenses/LICENSE-2.0)
+* See [Third party licenses](LICENSE-3RD-PARTY.md) for the licenses of dependencies

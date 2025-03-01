@@ -46,9 +46,11 @@ public final class Platform
 	}
 
 	/**
-	 * @return {@code true} if cmake binaries ship with the platform
+	 * Determines if the platform ships with the cmake binaries.
+	 *
+	 * @return {@code true} if the platform ships with the binaries
 	 */
-	public boolean shipsWithPlatform()
+	public boolean shipsWithBinaries()
 	{
 		return architecture == Architecture.ARM_32;
 	}

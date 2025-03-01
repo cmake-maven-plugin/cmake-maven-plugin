@@ -14,10 +14,6 @@
 	<packaging>maven-plugin</packaging>
 	<description>Builds or tests native code</description>
 
-	<properties>
-		<cmake.shipsWithPlatform>false</cmake.shipsWithPlatform>
-	</properties>
-
 	<profiles>
 		<profile>
 			<id>skip-integration-tests</id>
@@ -58,7 +54,7 @@
 							<failIfNoProjects>true</failIfNoProjects>
 							<streamLogs>true</streamLogs>
 							<!--
-							Fast Build Configuration:
+							Avoid downloading artifacts that are already present in the local repository:
 							https://maven.apache.org/plugins/maven-invoker-plugin/examples/fast-use.html
 							-->
 							<settingsFile>src/it/settings.xml</settingsFile>
@@ -66,7 +62,6 @@
 								<cmake.plugin.groupid>${project.groupId}</cmake.plugin.groupid>
 								<cmake.plugin.version>${project.version}</cmake.plugin.version>
 								<cmake.platform>${cmake.platform}</cmake.platform>
-								<cmake.shipsWithPlatform>${cmake.shipsWithPlatform}</cmake.shipsWithPlatform>
 							</properties>
 						</configuration>
 					</execution>

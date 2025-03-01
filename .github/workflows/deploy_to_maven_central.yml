@@ -1,9 +1,5 @@
-# Based on https://docs.github.com/en/actions/publishing-packages/publishing-java-packages-with-maven
-# https://gist.github.com/cstamas/69e6365bbb70521923020d68369bf8e5 and
-# https://oss.sonatype.org/nexus-staging-plugin/default/docs/rest.html
 name: Deploy to Maven Central
-on:
-  workflow_dispatch:
+on: workflow_dispatch
 concurrency:
   group: "${{ github.workflow }}-${{ github.ref }}"
   cancel-in-progress: true
@@ -12,20 +8,28 @@ permissions:
   id-token: write
 
 env:
-  STAGING_HOST: "oss.sonatype.org"
-  OSSRH_USERNAME: ${{ secrets.OSSRH_USERNAME }}
-  OSSRH_TOKEN: ${{ secrets.OSSRH_TOKEN }}
-  MAVEN_GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+  STAGING_HOST: "central.sonatype.com"
 jobs:
-  open-release:
-    name: Open release
+  bearer-token:
+    name: Generate Bearer Token
+    runs-on: ubuntu-latest
+    outputs:
+      VALUE: ${{ steps.generate.outputs.VALUE }}
+    steps:
+      - id: generate
+        # The credentials correspond to the user token returned by https://central.sonatype.com/account
+        # See https://central.sonatype.org/publish/publish-portal-api/#authentication-authorization
+        run: |
+          echo "VALUE=$(printf "${{ secrets.MAVEN_CENTRAL_USERNAME }}:${{ secrets.MAVEN_CENTRAL_PASSWORD }}" \
+          | base64)" >> "$GITHUB_OUTPUT"
+
+  tag-release:
+    name: Tag release
     runs-on: ubuntu-latest
     outputs:
       INITIAL_REF_POSITION: ${{ steps.create-tag.outputs.INITIAL_REF_POSITION }}
       TAG: ${{ steps.create-tag.outputs.TAG }}
       VERSION: ${{ steps.create-tag.outputs.VERSION }}
-      STAGING_PROFILE_ID: ${{ steps.parse-profile-id.outputs.STAGING_PROFILE_ID }}
-      STAGING_REPOSITORY_ID: ${{ steps.parse-repository-id.outputs.STAGING_REPOSITORY_ID }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,185 +38,111 @@ jobs:
         with:
           distribution: zulu
           java-version: 8
-          server-id: maven-central-releases
-          # Server authentication corresponds to "user token" returned by https://oss.sonatype.org/
-          server-username: OSSRH_USERNAME
-          server-password: OSSRH_TOKEN
-          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
       - name: Cache Dependencies
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository/*
-          key: "${{ runner.OS }}-maven-${{ hashFiles('**/pom.xml') }}"
+          key: "maven-${{ hashFiles('**/pom.xml') }}"
 
       - name: Configure Git User
         run: |
           git config user.email "cowwoc2020@gmail.com"
           git config user.name "Gili Tzabari"
 
-      # Maven command-line options:
-      # --batch-mode: recommended in CI to inform maven to not run in interactive mode (less logs)
-      # -V: strongly recommended in CI, will display the JDK and Maven versions in use.
-      #      Very useful to be quickly sure the selected versions were the ones you think.
-      # -e: Display stack-traces on failure
-      #
-      # Getting the current git tag: https://stackoverflow.com/a/50465671/14731
-      #
-      # Setting a GitHub Action output parameter:
-      # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-output-parameter
-      #
-      # "release:prepare" must skip integration tests because "binaries-on-path-test" requires artifacts
-      # to be deployed to local repository.
-      #
-      # Extracting the release version number: https://stackoverflow.com/a/16623897/14731
       - name: Create tag
         id: create-tag
         run: |
           echo "INITIAL_REF_POSITION=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          
+          # Maven command-line options:
+          # --batch-mode: recommended in CI to inform maven to not run in interactive mode (less logs)
+          # -V: strongly recommended in CI, will display the JDK and Maven versions in use.
+          #      Very useful to be quickly sure the selected versions were the ones you think.
+          # -e: Display stack-traces on failure
+          #
+          # "release:prepare" must skip integration tests because "binaries-on-path-test" requires artifacts
+          # to be deployed to local repository.
           ./mvnw release:prepare --batch-mode -V -e -Darguments="-Dinvoker.skip=true"
+          
+          # Getting the current git tag: https://stackoverflow.com/a/50465671/14731
           TAG=$(git describe --tag --abbrev=0)
+          
+          # Setting a GitHub Action output parameter:
+          # https://docs.github.com/en/actions/using-workflows/workflow-commands-for-github-actions#setting-an-output-parameter
           echo "TAG=${TAG}" >> "$GITHUB_OUTPUT"
+
+          # Extracting the release version number: https://stackoverflow.com/a/16623897/14731
           echo "VERSION=${TAG#"release-"}" >> "$GITHUB_OUTPUT"
 
-      - name: Look up staging profile id
-        id: request-profile-id
-        run: >
-          echo "STAGING_PROFILE_ID=$(curl -u '${{ secrets.OSSRH_USERNAME}}:${{ secrets.OSSRH_TOKEN }}'
-          -H 'Accept:application/json'
-          'https://${{ env.STAGING_HOST }}/service/local/staging/profile_evaluate?t=maven2&g=io.github.cmake-maven-plugin&a=anything&v=anything')"
-          >> "$GITHUB_OUTPUT"
-
-      - name: Parse the staging profile id
-        id: parse-profile-id
-        run: >
-          echo "STAGING_PROFILE_ID=$(echo '${{ steps.request-profile-id.outputs.STAGING_PROFILE_ID }}' | jq -r '.data[0].id')" >> "$GITHUB_OUTPUT"
-
-      - name: Open staging repository
-        id: open-repository
-        run: >
-          echo "STAGING_REPOSITORY_ID=$(curl -u '${{ secrets.OSSRH_USERNAME}}:${{ secrets.OSSRH_TOKEN }}'
-          -H 'Accept: application/json'
-          -H 'Content-type: application/json'
-          -X POST -d '{"data": {"description": "io.github.cmake-maven-plugin:${{ steps.create-tag.outputs.VERSION }}"}}'
-          'https://${{ env.STAGING_HOST }}/service/local/staging/profiles/${{ steps.parse-profile-id.outputs.STAGING_PROFILE_ID }}/start')"
-          >> "$GITHUB_OUTPUT"
-
-      - name: Parse the staging repository id
-        id: parse-repository-id
-        run: >
-          echo "STAGING_REPOSITORY_ID=$(echo '${{ steps.open-repository.outputs.STAGING_REPOSITORY_ID }}' | jq -r '.data.stagedRepositoryId')" >> "$GITHUB_OUTPUT"
-
+  build:
+    needs: tag-release
+    name: Build
+    uses: ./.github/workflows/reusable-build.yml
+    secrets: inherit
+    permissions:
+      contents: read
+      actions: read
+      checks: write
+    with:
+      COMMIT_ID: ${{ needs.tag-release.outputs.TAG }}
+      FOR_RELEASE: true
   deploy:
-    name: Deploy (${{ matrix.runtime }})
-    runs-on: ${{ matrix.os }}
-    needs: open-release
-    strategy:
-      # Concurrent deploys of the files that are common across platforms may lead to data corruption
-      max-parallel: 1
-      matrix:
-        runtime: [ linux-x64, osx-x64, win-x64, linux-arm64, win-arm64 ]
-        include:
-          - runtime: linux-x64
-            os: ubuntu-latest
-
-          - runtime: osx-x64
-            os: macOS-latest
-
-          - runtime: win-x64
-            os: windows-latest
-
-          - runtime: linux-arm64
-            os: ubuntu-latest
-
-          - runtime: win-arm64
-            os: windows-latest
+    needs: [ bearer-token, build ]
+    name: Deploy
+    runs-on: linux-x64
+    outputs:
+      ID: ${{ steps.upload.outputs.ID }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Download bundles
+        uses: actions/download-artifact@v4
         with:
-          ref: ${{ needs.open-release.outputs.TAG }}
-          fetch-depth: 0
+          merge-multiple: true
+          path: "${GITHUB_WORKSPACE}/bundles"
 
-      - name: Install Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: zulu
-          java-version: 8
-          server-id: maven-central-releases
-          # Server authentication corresponds to "user token" returned by https://oss.sonatype.org/
-          server-username: OSSRH_USERNAME
-          server-password: OSSRH_TOKEN
-          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
+      - name: Merge bundles
+        run: |
+          mkdir merge
+          cd merge
+          
+          unzip ../bundles/*.zip
+          ls -laR .
+          zip -r "../cmake-maven-plugin-${{ needs.tag-release.outputs.VERSION }}.zip"
 
-      - name: Cache Dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository/*
-          key: "${{ runner.OS }}-maven-${{ hashFiles('**/pom.xml') }}"
+      - name: Upload bundle
+        id: upload
+        run: |
+          ID=$(curl --request POST --verbose --show-error --fail \
+          --header "Authorization: Bearer ${{ needs.bearer-token.outputs.VALUE }}" \
+          --form "bundle=@cmake-maven-plugin-${{ needs.tag-release.outputs.VERSION }}.zip" \
+          --form "name=cmake-maven-plugin-${{ needs.tag-release.outputs.VERSION }}" \
+          --form "publishingType=USER_MANAGED" \
+          https://central.sonatype.com/api/v1/publisher/upload)
+          
+          echo "ID=${ID}" >> $GITHUB_ENV
 
-      - name: Add platform-specific options
-        if: ${{ matrix.runtime == 'linux-arm64' }}
-        run: >
-          echo "MAVEN_OPTS=-Dos.family=unix -Dos.arch=aarch64 -Dinvoker.skip=true" >> "${GITHUB_ENV}"
+      - name: Poll for deployment status
+        run: |
+          while true; do
+            response=$(curl --request POST --verbose --show-error --fail \
+            --header "Authorization: Bearer ${{ needs.bearer-token.outputs.VALUE }}" \
+            "https://central.sonatype.com/api/v1/publisher/status?id=${{ steps.upload.outputs.ID }}")
 
-      - name: Add platform-specific options
-        if: ${{ matrix.runtime == 'win-arm64' }}
-        # We need to quote -D arguments if the argument name contains a dot, due to this Powershell bug:
-        # https://github.com/PowerShell/PowerShell/issues/6291
-        run: >
-          echo "MAVEN_OPTS=`-Dos.family=windows` `-Dos.arch=aarch64` -Dinvoker.skip=true" | Out-File 
-          -FilePath "$env:GITHUB_ENV" -Append
-
-      # Need to install artifacts locally in order to run integration tests
-      - name: Test build
-        run: ./mvnw --batch-mode -V -e install
-
-      - name: Deploy to Maven Central
-        run: >
-          ./mvnw --batch-mode -V -e
-          -Dstaging_repository_id=${{ needs.open-release.outputs.STAGING_REPOSITORY_ID }}
-          -Dstaging_host="${{ env.STAGING_HOST }}"
-          -P release
-          deploy
-
-  close-release:
-    name: Close release
-    needs: [ open-release, deploy ]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.open-release.outputs.TAG }}
-      - uses: actions/setup-java@v4
-        with:
-          distribution: zulu
-          java-version: 8
-          server-id: maven-central-releases
-          # Server authentication corresponds to "user token" returned by https://oss.sonatype.org/
-          server-username: OSSRH_USERNAME
-          server-password: OSSRH_TOKEN
-          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
-
-      - name: Cache Dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.m2/repository/*
-          key: "${{ runner.OS }}-maven-${{ hashFiles('**/pom.xml') }}"
-
-      - name: Close staging repository
-        run: >
-          curl -u ${{ secrets.OSSRH_USERNAME}}:${{ secrets.OSSRH_TOKEN }} -X POST
-          -H "Content-Type:application/json"
-          -d '{"data": {"stagedRepositoryId": "${{ needs.open-release.outputs.STAGING_REPOSITORY_ID }}", "description": "Closing repository"}}'
-          'https://${{ env.STAGING_HOST }}/service/local/staging/profiles/${{ needs.open-release.outputs.STAGING_PROFILE_ID }}/finish' 
-
-  # Cleanup on failure: https://stackoverflow.com/a/74562058/14731
+            status=$(echo "${response}" | jq -r '.deploymentState')
+            echo "Current status: ${status}"
+          
+            if [[ "${status}" == "VALIDATED" ]]; then
+              echo "Deployment validated successfully!"
+              exit 0
+            elif [[ "${status}" == "FAILED" ]]; then
+              echo "Deployment failed!"
+              exit 1
+            fi
+            sleep 5
+          done
   on-failure:
     name: On failure
-    needs: [ open-release, deploy, close-release ]
+    needs: [ bearer-token, tag-release, deploy ]
     runs-on: ubuntu-latest
     if: ${{ failure() || cancelled() }}
     steps:
@@ -225,27 +155,20 @@ jobs:
         with:
           distribution: zulu
           java-version: 8
-          server-id: maven-central-releases
-          # Server authentication corresponds to "user token" returned by https://oss.sonatype.org/
-          server-username: OSSRH_USERNAME
-          server-password: OSSRH_TOKEN
-          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
-          gpg-passphrase: MAVEN_GPG_PASSPHRASE
 
-      - name: Drop staging repository
-        if: needs.open-release.outputs.STAGING_REPOSITORY_ID != '' && needs.open-release.outputs.STAGING_PROFILE_ID != ''
+      - name: Drop the bundle
+        if: needs.deploy.outputs.ID != ''
         run: >
-          curl -u ${{ secrets.OSSRH_USERNAME}}:${{ secrets.OSSRH_TOKEN }} -X POST
-          -H "Content-Type:application/json"
-          -d '{"data": {"stagedRepositoryId": "${{ needs.open-release.outputs.STAGING_REPOSITORY_ID }}", "description": "Dropping repository"}}'
-          'https://${{ env.STAGING_HOST }}/service/local/staging/profiles/${{ needs.open-release.outputs.STAGING_PROFILE_ID }}/drop'
+          curl --request DELETE --verbose --show-error --fail \
+            --header "Authorization: Bearer ${{ needs.bearer-token.outputs.VALUE }}" \
+            "https://central.sonatype.com/api/v1/publisher/status?id=${{ needs.deploy.outputs.ID }}")
 
       - name: Restore the workflow ref to its original position
-        if: needs.open-release.outputs.INITIAL_REF_POSITION != ''
+        if: needs.tag-release.outputs.INITIAL_REF_POSITION != ''
         run: |
           CURRENT_REF_POSITION=$(git rev-parse HEAD)
-          if [ "${CURRENT_REF_POSITION}" != "${{ needs.open-release.outputs.INITIAL_REF_POSITION }}" ]; then
-            git reset --hard ${{ needs.open-release.outputs.INITIAL_REF_POSITION }}
+          if [ "${CURRENT_REF_POSITION}" != "${{ needs.tag-release.outputs.INITIAL_REF_POSITION }}" ]; then
+            git reset --hard ${{ needs.tag-release.outputs.INITIAL_REF_POSITION }}
             if [ "${{ github.ref_type }}" == "tag" ]; then
               git ${{ github.ref_type }} -f ${{ github.ref_name }}
             fi
@@ -253,6 +176,6 @@ jobs:
           fi
 
       - name: Delete tag
-        if: needs.open-release.outputs.TAG != ''
+        if: needs.tag-release.outputs.TAG != ''
         run: |
-          git push --delete origin ${{ needs.open-release.outputs.TAG }}
+          git push --delete origin ${{ needs.tag-release.outputs.TAG }}

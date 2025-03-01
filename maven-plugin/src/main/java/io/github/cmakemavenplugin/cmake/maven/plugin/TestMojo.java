@@ -63,7 +63,7 @@ public class TestMojo extends CmakeMojo
 	/**
 	 * Maven tests value that indicates just the ctest tests are to be skipped.
 	 */
-	@Parameter(property = "ctest.skip.tests", alias = "ctest.skip.tests", defaultValue = "false")
+	@Parameter(property = "ctest.skip.tests", defaultValue = "false")
 	private boolean ctestSkip;
 	/**
 	 * Standard Maven tests value that indicates all tests are to be skipped.
@@ -104,6 +104,7 @@ public class TestMojo extends CmakeMojo
 	@Override
 	public void execute() throws MojoExecutionException
 	{
+		super.execute();
 		Log log = getLog();
 
 		// Surefire skips tests with properties, so we'll do it this way too

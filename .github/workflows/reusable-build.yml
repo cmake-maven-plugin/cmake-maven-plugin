@@ -1,0 +1,225 @@
+name: Build
+on:
+  workflow_call:
+    inputs:
+      COMMIT_ID:
+        required: true
+        type: string
+      FOR_RELEASE:
+        required: true
+        type: boolean
+
+jobs:
+  build:
+    name: Build (${{ matrix.runtime }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        runtime: [ linux-x64, osx-x64, win-x64 ]
+        include:
+          - runtime: linux-x64
+            os: ubuntu-latest
+
+          - runtime: osx-x64
+            os: macOS-latest
+
+          - runtime: win-x64
+            os: windows-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.COMMIT_ID }}
+
+      - name: Install Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 8
+
+          gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }}
+          # gpg-passphrase specifies the environment variable that contains the value. The value cannot be
+          # specified directly.
+          gpg-passphrase: GPG_PASSPHRASE
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          # Avoid caching the generated artifacts
+          path: |
+            ~/.m2/repository/*
+            !~/.m2/repository/io/github/cmake-maven-plugin
+          key: "${{ matrix.runtime }}-maven-${{ hashFiles('**/pom.xml') }}"
+
+      # Maven command-line options:
+      # --batch-mode: recommended in CI to inform maven to not run in interactive mode (less logs)
+      # -V: strongly recommended in CI, will display the JDK and Maven versions in use.
+      # -Dsurefire.useFile=false: useful in CI. Displays test errors in the logs directly (instead of
+      #                           having to crawl the workspace files to see the cause).
+      # -e: Display stack-traces on failure
+      # -P release: activate the "release" profile
+      #
+      # We need to use the "install" phase before running integration tests; otherwise,
+      # maven-invoker-plugin:install will fail.
+      - name: Build
+        shell: bash
+        env:
+          GPG_PASSPHRASE: ${{ secrets.MAVEN_GPG_PASSPHRASE }}
+        run: |
+          if [[ "${{ inputs.FOR_RELEASE }}" == "true" ]]; then
+            ./mvnw install --batch-mode -V "-Dsurefire.useFile=false" -e -P release
+            if [[ "${{ matrix.runtime }}" == "win-x64" ]]; then
+              7z a "${{ matrix.runtime }}-bundle.zip" ~/.m2/repository/io/github/cmake-maven-plugin
+            else
+              zip -r "${{ matrix.runtime }}-bundle.zip" ~/.m2/repository/io/github/cmake-maven-plugin
+            fi
+          else
+            ./mvnw install --batch-mode -V "-Dsurefire.useFile=false" -e
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.FOR_RELEASE }}
+        with:
+          name: ${{ matrix.runtime }}-bundle.zip
+          path: ${{ matrix.runtime }}-bundle.zip
+          if-no-files-found: error
+          retention-days: 1
+
+  build-arm:
+    runs-on: ubuntu-latest
+    name: Build (${{ matrix.arch }}-${{ matrix.distro }})
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - arch: armv6
+            distro: bullseye
+          - arch: armv7
+            distro: ubuntu_latest
+          - arch: aarch64
+            distro: ubuntu_latest
+
+    # Source: https://github.com/lh3/bwa/blob/139f68fc4c3747813783a488aef2adc86626b01b/.github/workflows/ci.yaml#L33-L46
+    #  gcc-arm-linux-gnueabi binutils-arm-linux-gnueabi
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.COMMIT_ID }}
+
+      - name: Cache Dependencies
+        uses: actions/cache@v4
+        with:
+          # Avoid caching the generated artifacts
+          path: |
+            ~/.m2/repository/*
+            !~/.m2/repository/io/github/cmake-maven-plugin
+          key: "${{ matrix.runtime }}-maven-${{ hashFiles('**/pom.xml') }}"
+
+      - name: Build
+        uses: uraimo/run-on-arch-action@v3
+        with:
+          arch: ${{ matrix.arch }}
+          distro: ${{ matrix.distro }}
+          githubToken: ${{ github.token }}
+          install: |
+            apt-get update --allow-releaseinfo-change -y
+            
+            case "${{ matrix.arch }}" in
+              armv6|armv7)
+                apt-get install wget cmake -y
+
+                mkdir /opt/jdk/
+                cd /opt/jdk
+                wget https://cdn.azul.com/zulu-embedded/bin/zulu8.84.0.15-ca-jdk8.0.442-linux_aarch32hf.tar.gz
+                tar -xzvf zulu8.84.0.15-ca-jdk8.0.442-linux_aarch32hf.tar.gz
+            
+                update-alternatives --install /usr/bin/java java /opt/jdk/zulu8.84.0.15-ca-jdk8.0.442-linux_aarch32hf/bin/java 181
+                update-alternatives --install /usr/bin/javac javac /opt/jdk/zulu8.84.0.15-ca-jdk8.0.442-linux_aarch32hf/bin/javac 181
+            
+                rm zulu8.84.0.15-ca-jdk8.0.442-linux_aarch32hf.tar.gz
+                ;;
+              aarch64)
+                apt-get install gnupg ca-certificates curl -y
+                curl -s https://repos.azul.com/azul-repo.key | gpg --dearmor -o /usr/share/keyrings/azul.gpg
+                echo "deb [signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" | tee /etc/apt/sources.list.d/zulu.list
+                apt-get update --allow-releaseinfo-change -y
+                apt-get install zulu8-jdk -y
+                ;;
+              *)
+                echo "Unsupported distro: ${{ matrix.distro }}"
+                exit 1
+                ;;
+            esac
+            apt-get install build-essential gnupg coreutils -y
+          setup: mkdir -p "${PWD}/.m2"
+          dockerRunArgs: >
+            --volume "${PWD}/.m2:/.m2" -e GITHUB_WORKSPACE=${GITHUB_WORKSPACE} 
+            -e GPG_PRIVATE_KEY="${{ secrets.MAVEN_GPG_PRIVATE_KEY }}"
+            -e GPG_PASSPHRASE="${{ secrets.MAVEN_GPG_PASSPHRASE }}"
+          run: |
+            # Define the temporary file location for the private key
+            GPG_KEY_FILE="$(mktemp)"
+            
+            # Write the private key to the temp file
+            echo "${GPG_PRIVATE_KEY}" | base64 --decode > "${GPG_KEY_FILE}"
+            
+            # Import the private key into the GPG keychain
+            gpg --batch --import "${GPG_KEY_FILE}"
+            
+            # Remove the temporary key file immediately after import
+            shred -u "${GPG_KEY_FILE}"
+            
+            # Setup a cleanup trap to remove the key after the job completes
+            cleanup_gpg()
+            {
+              KEY_ID=$(gpg --list-secret-keys --with-colons | grep '^sec' | cut -d: -f5)
+              if [[ -n "$KEY_ID" ]]; then
+                gpg --batch --yes --delete-secret-keys "$KEY_ID"
+                gpg --batch --yes --delete-keys "$KEY_ID"
+              fi
+            }
+            trap cleanup_gpg EXIT
+            
+            export JAVA_HOME=`which java | xargs readlink -f | xargs dirname | xargs dirname`
+            mkdir ~/.m2
+            cat <<EOF > ~/.m2/settings.xml            
+            <servers>
+              <server>
+                <id>gpg.passphrase</id>
+                <passphrase>${GPG_PASSPHRASE}</passphrase>
+              </server>
+            </servers>
+            EOF
+            
+            cat <<EOF > ~/.m2/toolchains.xml
+            <?xml version="1.0" encoding="UTF8"?>
+            <toolchains>
+              <toolchain>
+                <type>jdk</type>
+                <provides>
+                  <version>8</version>
+                  <vendor>temurin</vendor>
+                </provides>
+                <configuration>
+                  <jdkHome>${JAVA_HOME}</jdkHome>
+                </configuration>
+              </toolchain>
+            </toolchains>
+            EOF
+            
+            if [[ "${{ inputs.FOR_RELEASE }}" == "true" ]]; then
+              ./mvnw install --batch-mode -V "-Dsurefire.useFile=false" -e -P release
+              zip -r "${{ matrix.runtime }}-bundle.zip" ~/.m2/repository/io/github/cmake-maven-plugin
+            else
+              ./mvnw install --batch-mode -V "-Dsurefire.useFile=false" -e
+            fi
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.FOR_RELEASE }}
+        with:
+          name: linux-${{ matrix.arch }}-bundle.zip
+          path: linux-${{ matrix.arch }}-bundle.zip
+          if-no-files-found: error
+          retention-days: 1

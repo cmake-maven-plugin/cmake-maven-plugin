@@ -26,16 +26,17 @@ import java.util.stream.Collectors;
 public abstract class CmakeMojo extends AbstractMojo
 {
 	/**
-	 * {@code true} if this plugin should download and unpack cmake binaries. {@code false} if this plugin
-	 * should assume that cmake is already installed and is on the {@code PATH}.
+	 * {@code true} if this plugin should download and unpack cmake binaries. {@code false} if {@code cmake} is
+	 * already installed and is on the {@code PATH}. The default value is {@code true} on platforms that ship
+	 * with the cmake binaries and {@code false} on platforms that do not.
 	 */
-	@Parameter(property = "cmake.download", alias = "cmake.download", defaultValue = "true")
-	private boolean downloadBinaries;
+	@Parameter(property = "cmake.download")
+	private Boolean downloadBinaries;
 	/**
 	 * The directory containing the cmake executable. By default, it is assumed that the executable is on
-	 * the PATH. This parameter is ignored if {@link #downloadBinaries} is set.
+	 * the PATH. This parameter is ignored if {@link #downloadBinaries} is {@code true}.
 	 */
-	@Parameter(property = "cmake.dir", alias = "cmake.dir")
+	@Parameter(property = "cmake.dir")
 	private String cmakeDir;
 	/**
 	 * The environment variables.
@@ -66,6 +67,13 @@ public abstract class CmakeMojo extends AbstractMojo
 		this.project = project;
 		this.pluginManager = pluginManager;
 		this.session = session;
+	}
+
+	@Override
+	public void execute() throws MojoExecutionException
+	{
+		if (downloadBinaries == null)
+			downloadBinaries = !platform.shipsWithBinaries();
 	}
 
 	/**
@@ -128,7 +136,7 @@ public abstract class CmakeMojo extends AbstractMojo
 	 * @return the command-line arguments for running the binary
 	 * @throws FileNotFoundException if the binary was not found
 	 */
-	public Path getBinaryPath(String filename, ProcessBuilder processBuilder) throws FileNotFoundException
+	protected Path getBinaryPath(String filename, ProcessBuilder processBuilder) throws FileNotFoundException
 	{
 		Log log = getLog();
 		Path cmakeDir = getCmakeDir();
@@ -172,7 +180,7 @@ public abstract class CmakeMojo extends AbstractMojo
 	 *
 	 * @param processBuilder the {@code ProcessBuilder}
 	 */
-	public void addOptions(ProcessBuilder processBuilder)
+	protected void addOptions(ProcessBuilder processBuilder)
 	{
 		if (options == null)
 			return;
@@ -190,7 +198,7 @@ public abstract class CmakeMojo extends AbstractMojo
 	 *
 	 * @param processBuilder the {@code ProcessBuilder}
 	 */
-	public void overrideEnvironmentVariables(ProcessBuilder processBuilder)
+	protected void overrideEnvironmentVariables(ProcessBuilder processBuilder)
 	{
 		if (environmentVariables == null)
 			return;

@@ -68,6 +68,7 @@ public class GenerateMojo extends CmakeMojo
 	public void execute()
 		throws MojoExecutionException
 	{
+		super.execute();
 		try
 		{
 			if (!sourcePath.exists())

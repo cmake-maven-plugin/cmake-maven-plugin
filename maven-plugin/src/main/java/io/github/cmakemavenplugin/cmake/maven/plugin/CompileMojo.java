@@ -68,6 +68,7 @@ public class CompileMojo extends CmakeMojo
 	public void execute()
 		throws MojoExecutionException
 	{
+		super.execute();
 		try
 		{
 			if (!projectDirectory.exists())
