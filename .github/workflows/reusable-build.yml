@@ -124,7 +124,7 @@ jobs:
           distro: ${{ matrix.distro }}
           githubToken: ${{ github.token }}
           install: |
-            apt-get update --allow-releaseinfo-change -y
+            apt-get update -y
             
             case "${{ matrix.arch }}" in
               armv6|armv7)
@@ -141,7 +141,7 @@ jobs:
                 rm zulu8.84.0.15-ca-jdk8.0.442-linux_aarch32hf.tar.gz
                 ;;
               aarch64)
-                apt-get install gnupg ca-certificates curl -y
+                apt-get install curl -y
                 curl -s https://repos.azul.com/azul-repo.key | gpg --dearmor -o /usr/share/keyrings/azul.gpg
                 echo "deb [signed-by=/usr/share/keyrings/azul.gpg] https://repos.azul.com/zulu/deb stable main" | tee /etc/apt/sources.list.d/zulu.list
                 apt-get update --allow-releaseinfo-change -y
@@ -152,35 +152,46 @@ jobs:
                 exit 1
                 ;;
             esac
-            apt-get install build-essential gnupg coreutils -y
+            apt-get install build-essential gnupg ca-certificates coreutils -y
           setup: mkdir -p "${PWD}/.m2"
           dockerRunArgs: >
             --volume "${PWD}/.m2:/.m2" -e GITHUB_WORKSPACE=${GITHUB_WORKSPACE} 
             -e GPG_PRIVATE_KEY="${{ secrets.MAVEN_GPG_PRIVATE_KEY }}"
             -e GPG_PASSPHRASE="${{ secrets.MAVEN_GPG_PASSPHRASE }}"
           run: |
+            echo "gili1"
             # Define the temporary file location for the private key
             GPG_KEY_FILE="$(mktemp)"
+            echo "gili2"
             
             # Write the private key to the temp file
             echo "${GPG_PRIVATE_KEY}" | base64 --decode > "${GPG_KEY_FILE}"
+            echo "gili3"
             
             # Import the private key into the GPG keychain
             gpg --batch --import "${GPG_KEY_FILE}"
+            echo "gili4"
             
             # Remove the temporary key file immediately after import
             shred -u "${GPG_KEY_FILE}"
+            echo "gili5"
             
             # Setup a cleanup trap to remove the key after the job completes
             cleanup_gpg()
             {
+              echo "gili7"
               KEY_ID=$(gpg --list-secret-keys --with-colons | grep '^sec' | cut -d: -f5)
+              echo "gili8"
               if [[ -n "$KEY_ID" ]]; then
+                echo "gili9"
                 gpg --batch --yes --delete-secret-keys "$KEY_ID"
+                echo "gili99"
                 gpg --batch --yes --delete-keys "$KEY_ID"
+                echo "gili999"
               fi
             }
             trap cleanup_gpg EXIT
+            echo "gili6"
             
             export JAVA_HOME=`which java | xargs readlink -f | xargs dirname | xargs dirname`
             mkdir ~/.m2
