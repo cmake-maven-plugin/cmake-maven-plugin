@@ -8,3 +8,6 @@ include(CTest)
 
 # Tell ctest where to find its tests
 add_subdirectory(tests)
+
+# Install compiled executable into the specified subdirectory
+install(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/$<CONFIG>/hello-test${CMAKE_EXECUTABLE_SUFFIX} DESTINATION install-dir)

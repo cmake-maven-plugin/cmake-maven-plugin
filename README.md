@@ -124,6 +124,39 @@ migrated to GitHub (and Git) after Google Code shut down.
 </plugin>
 ```
 
+### Install Goal
+
+```xml
+
+<plugin>
+  <groupId>io.github.cmake-maven-plugin</groupId>
+  <artifactId>cmake-maven-plugin</artifactId>
+  <version>3.31.5-b2</version>
+  <executions>
+    <execution>
+      <id>cmake-install</id>
+      <goals>
+        <goal>install</goal>
+      </goals>
+      <configuration>
+        <config>
+          <!-- Optional: the build configuration (e.g. "x64|Release") -->
+        </config>
+        <projectDirectory>
+          <!-- "targetPath" from the "generate" goal -->
+        </projectDirectory>
+        <prefix>
+          <!-- Optional: path prefix to the installation destination (e.g. "${user.home}/.local", or "/usr/local") -->
+        </prefix>
+        <environmentVariables>
+          <key>value</key>
+        </environmentVariables>
+      </configuration>
+    </execution>
+  </executions>
+</plugin>
+```
+
 ### Examples
 
 The following projects contain examples of how to use this plugin:
@@ -155,6 +188,8 @@ If detection does not work, or you wish to override it then set `-Dos.name=<valu
 For instance, when building for 64-bit Linux machines, use:
 
     mvn -Dos.name="linux" -Dos.arch="x86_64" install
+
+You may need to set up a `~/.m2/toolchain.xml` file to refer to your Java8-compatible installation location.
 
 ### Using a local CMake installation
 

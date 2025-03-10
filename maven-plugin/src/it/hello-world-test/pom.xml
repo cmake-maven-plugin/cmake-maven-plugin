@@ -65,6 +65,18 @@
 							<buildDirectory>${project.build.directory}</buildDirectory>
 						</configuration>
 					</execution>
+					<execution>
+						<id>cmake-install</id>
+						<goals>
+							<goal>install</goal>
+						</goals>
+						<phase>package</phase>
+						<configuration>
+							<projectDirectory>${project.build.directory}</projectDirectory>
+							<prefix>${project.build.directory}</prefix>
+							<config>Debug</config>
+						</configuration>
+					</execution>
 				</executions>
 			</plugin>
 			<plugin>
