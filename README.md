@@ -1,14 +1,11 @@
 # CMake-Maven-Plugin
 [![build-status](../../workflows/Build/badge.svg)](../../actions?query=workflow%3ABuild)
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.cmake-maven-plugin/cmake/badge.svg)](https://central.sonatype.com/search?q=g:io.github.cmake-maven-plugin)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.cmake-maven-plugin/cmake/badge.svg?&gav=true)](https://central.sonatype.com/search?q=g:io.github.cmake-maven-plugin)
 
 ## Introduction
 
 A Maven project for the CMake build system. It can be used by including it as a plugin within your Maven
 project's pom.xml file.
-
-This repository [originally lived](https://code.google.com/p/cmake-maven-project/) on Google Code and was
-migrated to GitHub (and Git) after Google Code shut down.
 
 ## Sample Usage
 
