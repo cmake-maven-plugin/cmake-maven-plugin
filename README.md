@@ -1,4 +1,6 @@
-# CMake-Maven-Plugin [![build-status](../../workflows/Build/badge.svg)](../../actions?query=workflow%3ABuild)
+# CMake-Maven-Plugin
+[![build-status](../../workflows/Build/badge.svg)](../../actions?query=workflow%3ABuild)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.github.cmake-maven-plugin/cmake/badge.svg)](https://central.sonatype.com/search?q=g:io.github.cmake-maven-plugin)
 
 ## Introduction
 
