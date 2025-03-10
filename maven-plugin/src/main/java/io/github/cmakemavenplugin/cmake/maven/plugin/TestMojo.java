@@ -30,11 +30,12 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
 import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 
 /**
@@ -50,21 +51,53 @@ public class TestMojo extends CmakeMojo
 	 */
 	@Parameter
 	private String config;
+
+	/**
+	 * The directory to run ctest in.
+	 *
+	 * @deprecated use {@link #projectDirectory} instead
+	 */
+	@Deprecated
+	@Parameter
+	private File buildDirectoryDeprecatedParameter;
+	/**
+	 * The directory to run ctest in.
+	 *
+	 * @deprecated use {@code cmake.build.directory} instead
+	 */
+	@Deprecated
+	@Parameter(property = "ctest.build.dir")
+	private File buildDirectoryDeprecatedProperty;
+
 	/**
 	 * The directory to run ctest in.
 	 */
-	@Parameter(property = "ctest.build.dir", required = true)
-	private File buildDirectory;
+	@Parameter(defaultValue = "${project.build.directory}")
+	private File projectDirectory;
 	/**
 	 * Value that lets Maven tests fail without causing the build to fail.
 	 */
 	@Parameter(defaultValue = "false")
 	private boolean ignoreTestFailure;
+
 	/**
 	 * Maven tests value that indicates just the ctest tests are to be skipped.
+	 *
+	 * @deprecated use {@link #skipTests} instead
 	 */
-	@Parameter(property = "ctest.skip.tests", defaultValue = "false")
-	private boolean ctestSkip;
+	@Deprecated
+	@Parameter(defaultValue = "false")
+	private boolean ctestSkipDeprecatedParameter;
+
+	/**
+	 * Maven tests value that indicates just the ctest tests are to be skipped.
+	 *
+	 * @deprecated use {@code maven.test.skip} instead
+	 */
+	@Deprecated
+	@Parameter(property = "ctest.skip.tests")
+	private boolean ctestSkipDeprecatedProperty;
+
 	/**
 	 * Standard Maven tests value that indicates all tests are to be skipped.
 	 */
@@ -76,11 +109,22 @@ public class TestMojo extends CmakeMojo
 	 */
 	@Parameter(property = "threadCount", defaultValue = "0")
 	private int threadCount;
+
+	/**
+	 * The dashboard to which results should be submitted. This is configured through the optional
+	 * CTestConfig.cmake file.
+	 *
+	 * @deprecated use {@code cmake.dashboard} instead
+	 */
+	@Deprecated
+	@Parameter(property = "dashboard")
+	private String dashboardDeprecatedProperty;
+
 	/**
 	 * The dashboard to which results should be submitted. This is configured through the optional
 	 * CTestConfig.cmake file.
 	 */
-	@Parameter(property = "dashboard")
+	@Parameter(property = "cmake.dashboard")
 	private String dashboard;
 
 	/**
@@ -107,18 +151,41 @@ public class TestMojo extends CmakeMojo
 		super.execute();
 		Log log = getLog();
 
+		if (buildDirectoryDeprecatedParameter != null)
+		{
+			throw new MojoExecutionException("The \"buildDirectory\" parameter has been renamed. Please use " +
+				"\"projectDirectory\" instead.");
+		}
+		if (buildDirectoryDeprecatedProperty != null)
+		{
+			throw new MojoExecutionException("The \"ctest.build.dir\" property has been replaced by " +
+				"${project.build.directory}.");
+		}
+		if (ctestSkipDeprecatedParameter)
+			throw new MojoExecutionException("The \"ctestSkip\" parameter has been replaced by ${skipTests}.");
+		if (ctestSkipDeprecatedProperty)
+		{
+			throw new MojoExecutionException("The \"ctest.skip.tests\" parameter has replaced by " +
+				"${maven.test.skip}.");
+		}
+		if (dashboardDeprecatedProperty != null)
+		{
+			throw new MojoExecutionException("The \"dashboard\" parameter has been renamed. Please use " +
+				"\"cmake.dashboard\" instead.");
+		}
+
 		// Surefire skips tests with properties, so we'll do it this way too
-		if (skipTests || ctestSkip)
+		if (skipTests)
 		{
 			if (log.isInfoEnabled())
 				log.info("Tests are skipped.");
 			return;
 		}
-		String buildDir = buildDirectory.getAbsolutePath();
-		if (!buildDirectory.exists())
-			throw new MojoExecutionException(buildDir + " does not exist");
-		if (!buildDirectory.isDirectory())
-			throw new MojoExecutionException(buildDir + " isn't directory");
+		String projectPath = projectDirectory.getAbsolutePath();
+		if (!projectDirectory.exists())
+			throw new MojoExecutionException(projectPath + " does not exist");
+		if (!projectDirectory.isDirectory())
+			throw new MojoExecutionException(projectPath + " isn't directory");
 
 		if (threadCount == 0)
 			threadCount = Runtime.getRuntime().availableProcessors();
@@ -127,7 +194,7 @@ public class TestMojo extends CmakeMojo
 		{
 			downloadBinariesIfNecessary();
 
-			ProcessBuilder processBuilder = new ProcessBuilder().directory(buildDirectory);
+			ProcessBuilder processBuilder = new ProcessBuilder().directory(projectDirectory);
 			overrideEnvironmentVariables(processBuilder);
 
 			String ctestPath = getBinaryPath("ctest", processBuilder).toString();
@@ -148,7 +215,7 @@ public class TestMojo extends CmakeMojo
 
 			if (log.isDebugEnabled())
 			{
-				log.debug("CTest build directory: " + buildDir);
+				log.debug("projectDirectory: " + projectPath);
 				log.debug("Number of threads used: " + threadCount);
 				log.debug("Environment: " + processBuilder.environment());
 				log.debug("Command-line: " + processBuilder.command());
@@ -164,17 +231,15 @@ public class TestMojo extends CmakeMojo
 			Transformer transformer = tf.newTransformer(xsltSource);
 
 			// Read the ctest TAG file to find out what current run was called
-			File tagFile = new File(buildDirectory, "/Testing/TAG");
+			Path tagFile = projectDirectory.toPath().resolve("Testing/TAG");
 			Charset charset = Charset.defaultCharset();
 			StreamSource source = getStreamSource(tagFile, charset);
-			File reportsDir = new File(getBuildDirectory(), "surefire-reports");
-			File xmlReport = new File(reportsDir, "CTestResults.xml");
-			StreamResult result = new StreamResult(xmlReport);
+			Path reportsDirectory = Paths.get(project.getBuild().getDirectory(), "surefire-reports");
+			Path xmlReport = reportsDirectory.resolve("CTestResults.xml");
+			StreamResult result = new StreamResult(xmlReport.toFile());
 
 			// We have to create if there aren't other Surefire tests
-			if (!reportsDir.exists())
-				if (!reportsDir.mkdirs())
-					throw new IOException("Couldn't create " + reportsDir);
+			Files.createDirectories(reportsDirectory);
 
 			// Transform CTest output into Surefire style test output
 			transformer.transform(source, result);
@@ -193,27 +258,18 @@ public class TestMojo extends CmakeMojo
 		}
 	}
 
-	private StreamSource getStreamSource(File tagFile, Charset charset) throws IOException
+	private StreamSource getStreamSource(Path tagFile, Charset charset) throws IOException
 	{
-		FileInputStream fis = new FileInputStream(tagFile);
-		InputStreamReader isr = new InputStreamReader(fis, charset);
-		BufferedReader tagReader = new BufferedReader(isr);
 		String tag;
-		try
+		try (BufferedReader reader = Files.newBufferedReader(tagFile, charset))
 		{
-			tag = tagReader.readLine();
+			tag = reader.readLine();
 		}
-		finally
-		{
-			tagReader.close();
-		}
-
 		if (tag == null || tag.trim().isEmpty())
 			throw new IOException("Couldn't read ctest TAG file");
 
 		// Get the current run's test data for reformatting
-		String xmlTestFilePath = "/Testing/" + tag + "/Test.xml";
-		File xmlSource = new File(buildDirectory, xmlTestFilePath);
-		return new StreamSource(xmlSource);
+		Path xmlSource = projectDirectory.toPath().resolve("Testing/" + tag + "/Test.xml");
+		return new StreamSource(xmlSource.toFile());
 	}
 }

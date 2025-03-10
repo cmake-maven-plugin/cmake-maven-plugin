@@ -25,6 +25,8 @@ import org.apache.maven.project.MavenProject;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 
 /**
@@ -48,7 +50,7 @@ public class CompileMojo extends CmakeMojo
 	/**
 	 * The directory containing the project file.
 	 */
-	@Parameter(required = true)
+	@Parameter(defaultValue = "${project.build.directory}")
 	private File projectDirectory;
 
 	/**
@@ -71,10 +73,11 @@ public class CompileMojo extends CmakeMojo
 		super.execute();
 		try
 		{
-			if (!projectDirectory.exists())
-				throw new MojoExecutionException(projectDirectory.getAbsolutePath() + " does not exist");
-			if (!projectDirectory.isDirectory())
-				throw new MojoExecutionException(projectDirectory.getAbsolutePath() + " must be a directory");
+			Path projectPath = projectDirectory.toPath();
+			if (Files.notExists(projectPath))
+				throw new MojoExecutionException(projectPath.toAbsolutePath() + " does not exist");
+			if (!Files.isDirectory(projectPath))
+				throw new MojoExecutionException(projectPath.toAbsolutePath() + " must be a directory");
 
 			downloadBinariesIfNecessary();
 
@@ -84,7 +87,7 @@ public class CompileMojo extends CmakeMojo
 			String cmakePath = getBinaryPath("cmake", processBuilder).toString();
 			processBuilder.command().add(cmakePath);
 
-			Collections.addAll(processBuilder.command(), "--build", projectDirectory.getPath());
+			Collections.addAll(processBuilder.command(), "--build", projectPath.toString());
 			if (target != null)
 				Collections.addAll(processBuilder.command(), "--target", target);
 			if (config != null)
@@ -94,7 +97,7 @@ public class CompileMojo extends CmakeMojo
 			Log log = getLog();
 			if (log.isDebugEnabled())
 			{
-				log.debug("projectDirectory: " + projectDirectory);
+				log.debug("projectDirectory: " + projectPath);
 				log.debug("target: " + target);
 				log.debug("config: " + config);
 				log.debug("Environment: " + processBuilder.environment());

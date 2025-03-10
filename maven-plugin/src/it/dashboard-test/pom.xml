@@ -44,7 +44,6 @@
 						</goals>
 						<configuration>
 							<sourcePath>${project.basedir}</sourcePath>
-							<targetPath>${project.build.directory}</targetPath>
 						</configuration>
 					</execution>
 					<execution>
@@ -52,9 +51,6 @@
 						<goals>
 							<goal>compile</goal>
 						</goals>
-						<configuration>
-							<projectDirectory>${project.build.directory}</projectDirectory>
-						</configuration>
 					</execution>
 					<execution>
 						<id>cmake-test</id>
@@ -62,7 +58,6 @@
 							<goal>test</goal>
 						</goals>
 						<configuration>
-							<buildDirectory>${project.build.directory}</buildDirectory>
 							<ignoreTestFailure>true</ignoreTestFailure>
 							<dashboard>Experimental</dashboard>
 						</configuration>

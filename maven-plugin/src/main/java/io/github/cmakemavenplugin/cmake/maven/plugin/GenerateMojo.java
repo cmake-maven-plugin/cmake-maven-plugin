@@ -16,6 +16,7 @@ package io.github.cmakemavenplugin.cmake.maven.plugin;
 import org.apache.maven.execution.MavenSession;
 import org.apache.maven.plugin.BuildPluginManager;
 import org.apache.maven.plugin.MojoExecutionException;
+import org.apache.maven.plugin.descriptor.PluginDescriptor;
 import org.apache.maven.plugin.logging.Log;
 import org.apache.maven.plugins.annotations.LifecyclePhase;
 import org.apache.maven.plugins.annotations.Mojo;
@@ -25,6 +26,8 @@ import org.apache.maven.project.MavenProject;
 import javax.inject.Inject;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Collections;
 
 /**
@@ -42,9 +45,17 @@ public class GenerateMojo extends CmakeMojo
 	private File sourcePath;
 	/**
 	 * The output directory.
+	 *
+	 * @deprecated use {@link #projectDirectory} instead
 	 */
-	@Parameter(required = true)
+	@Deprecated
+	@Parameter
 	private File targetPath;
+	/**
+	 * The output directory.
+	 */
+	@Parameter(defaultValue = "${project.build.directory}")
+	private File projectDirectory;
 	/**
 	 * The makefile generator to use.
 	 */
@@ -73,12 +84,25 @@ public class GenerateMojo extends CmakeMojo
 		{
 			if (!sourcePath.exists())
 				throw new MojoExecutionException("sourcePath does not exist: " + sourcePath.getAbsolutePath());
-			if (!targetPath.exists() && !targetPath.mkdirs())
-				throw new MojoExecutionException("Cannot create " + targetPath.getAbsolutePath());
+			if (targetPath != null)
+			{
+				throw new MojoExecutionException("The \"targetPath\" parameter has been renamed. Please use " +
+					"\"projectDirectory\" instead.");
+			}
+			if (projectDirectory == null)
+			{
+				// TODO: Replace with @Parameter(required = true) after removing deprecated parameters
+				PluginDescriptor pluginDescriptor = (PluginDescriptor) getPluginContext().get("pluginDescriptor");
+				throw new MojoExecutionException("The parameters 'projectDirectory' for goal " +
+					pluginDescriptor.getGroupId() + ":" + pluginDescriptor.getArtifactId() + ":" +
+					pluginDescriptor.getVersion() + ":" + pluginDescriptor.getName() + " are missing or invalid");
+			}
+			Path projectPath = projectDirectory.toPath();
+			Files.createDirectories(projectPath);
 
 			downloadBinariesIfNecessary();
 
-			ProcessBuilder processBuilder = new ProcessBuilder().directory(targetPath);
+			ProcessBuilder processBuilder = new ProcessBuilder().directory(projectDirectory);
 			overrideEnvironmentVariables(processBuilder);
 
 			String cmakePath = getBinaryPath("cmake", processBuilder).toString();
@@ -94,7 +118,7 @@ public class GenerateMojo extends CmakeMojo
 			if (log.isDebugEnabled())
 			{
 				log.debug("sourcePath: " + sourcePath);
-				log.debug("targetPath: " + targetPath);
+				log.debug("projectDirectory: " + projectPath);
 				log.debug("Environment: " + processBuilder.environment());
 				log.debug("Command-line: " + processBuilder.command());
 			}
