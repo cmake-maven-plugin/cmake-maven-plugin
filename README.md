@@ -17,7 +17,7 @@ migrated to GitHub (and Git) after Google Code shut down.
 <plugin>
   <groupId>io.github.cmake-maven-plugin</groupId>
   <artifactId>cmake-maven-plugin</artifactId>
-  <version>3.31.5-b2</version>
+  <version>3.31.6-b1-SNAPSHOT</version>
   <executions>
     <execution>
       <id>cmake-generate</id>
@@ -28,9 +28,8 @@ migrated to GitHub (and Git) after Google Code shut down.
         <sourcePath>
           <!-- The directory containing CMakeLists -->
         </sourcePath>
-        <targetPath>
-          <!-- The directory to write the project files to -->
-        </targetPath>
+        <!-- Optional: The directory where project files will be written -->
+        <projectDirectory>${project.build.directory}/cmake</projectDirectory>
         <generator>
           <!--
           Optional: Overrides the default generator used by cmake.
@@ -65,7 +64,7 @@ migrated to GitHub (and Git) after Google Code shut down.
 <plugin>
   <groupId>io.github.cmake-maven-plugin</groupId>
   <artifactId>cmake-maven-plugin</artifactId>
-  <version>3.31.5-b2</version>
+  <version>3.31.6-b1-SNAPSHOT</version>
   <executions>
     <execution>
       <id>cmake-compile</id>
@@ -76,11 +75,8 @@ migrated to GitHub (and Git) after Google Code shut down.
         <config>
           <!-- Optional: the build configuration (e.g. "x64|Release") -->
         </config>
-        <target>
-          <!-- Optional: the build "target" -->
-        </target>
         <projectDirectory>
-          <!-- "targetPath" from the "generate" goal -->
+          <!-- "projectDirectory" from the "generate" goal -->
         </projectDirectory>
         <environmentVariables>
           <key>value</key>
@@ -98,7 +94,7 @@ migrated to GitHub (and Git) after Google Code shut down.
 <plugin>
   <groupId>io.github.cmake-maven-plugin</groupId>
   <artifactId>cmake-maven-plugin</artifactId>
-  <version>3.31.5-b2</version>
+  <version>3.31.6-b1-SNAPSHOT</version>
   <executions>
     <execution>
       <id>cmake-test</id>
@@ -106,14 +102,12 @@ migrated to GitHub (and Git) after Google Code shut down.
         <goal>test</goal>
       </goals>
       <configuration>
-        <!-- "buildDirectory" is "targetPath" from the "generate" goal -->
-        <buildDirectory>${project.build.directory}</buildDirectory>
+        <!-- Optional: "projectDirectory" from the "generate" goal -->
+	    <projectDirectory>${project.build.directory}/cmake</projectDirectory>
         <!-- Optional: do not fail the build on test failures. false by default. -->
         <ignoreTestFailure>true</ignoreTestFailure>
-        <!-- Optional: skip only ctest tests. false by default. -->
-        <ctest.skip.tests>true</ctest.skip.tests>
-        <!-- Optional: Skip all Maven tests. false by default -->
-        <maven.test.skip>true</maven.test.skip>
+        <!-- Optional: Skip the tests. false by default -->
+        <skipTests>true</skipTests>
         <!-- Optional: the number of threads tests should use -->
         <threadCount>2</threadCount>
         <!-- Optional: dashboard configuration; used with CTestConfig.cmake -->
@@ -131,7 +125,7 @@ migrated to GitHub (and Git) after Google Code shut down.
 <plugin>
   <groupId>io.github.cmake-maven-plugin</groupId>
   <artifactId>cmake-maven-plugin</artifactId>
-  <version>3.31.5-b2</version>
+  <version>3.31.6-b1-SNAPSHOT</version>
   <executions>
     <execution>
       <id>cmake-install</id>
@@ -142,11 +136,12 @@ migrated to GitHub (and Git) after Google Code shut down.
         <config>
           <!-- Optional: the build configuration (e.g. "x64|Release") -->
         </config>
-        <projectDirectory>
-          <!-- "targetPath" from the "generate" goal -->
-        </projectDirectory>
+        <!-- Optional: "projectDirectory" from the "generate" goal -->
+        <projectDirectory>${project.build.directory}/cmake</projectDirectory>
         <prefix>
-          <!-- Optional: path prefix to the installation destination (e.g. "${user.home}/.local", or "/usr/local") -->
+          <!--
+          Optional: path prefix to the installation destination (e.g. "${user.home}/.local", or "/usr/local")
+          -->
         </prefix>
         <environmentVariables>
           <key>value</key>

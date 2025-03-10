@@ -12,9 +12,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<cmake.binaries.dir>
-			${project.build.directory}${file.separator}manual-download${file.separator}bin
-		</cmake.binaries.dir>
+		<cmake.binaries.dir>${project.build.directory}/cmake/manual-download/bin</cmake.binaries.dir>
 		<cmake.download>false</cmake.download>
 	</properties>
 
@@ -49,6 +47,11 @@
 				<groupId>${cmake.plugin.groupid}</groupId>
 				<artifactId>cmake-maven-plugin</artifactId>
 				<version>${cmake.plugin.version}</version>
+				<configuration>
+					<environmentVariables>
+						<PATH>${env.PATH}${path.separator}${cmake.binaries.dir}</PATH>
+					</environmentVariables>
+				</configuration>
 				<executions>
 					<execution>
 						<id>cmake-generate</id>
@@ -57,10 +60,6 @@
 						</goals>
 						<configuration>
 							<sourcePath>${project.basedir}</sourcePath>
-							<targetPath>${project.build.directory}</targetPath>
-							<environmentVariables>
-								<PATH>${env.PATH}${path.separator}${cmake.binaries.dir}</PATH>
-							</environmentVariables>
 						</configuration>
 					</execution>
 					<execution>
@@ -68,24 +67,12 @@
 						<goals>
 							<goal>compile</goal>
 						</goals>
-						<configuration>
-							<projectDirectory>${project.build.directory}</projectDirectory>
-							<environmentVariables>
-								<PATH>${env.PATH}${path.separator}${cmake.binaries.dir}</PATH>
-							</environmentVariables>
-						</configuration>
 					</execution>
 					<execution>
 						<id>cmake-test</id>
 						<goals>
 							<goal>test</goal>
 						</goals>
-						<configuration>
-							<buildDirectory>${project.build.directory}</buildDirectory>
-							<environmentVariables>
-								<PATH>${env.PATH}${path.separator}${cmake.binaries.dir}</PATH>
-							</environmentVariables>
-						</configuration>
 					</execution>
 				</executions>
 			</plugin>

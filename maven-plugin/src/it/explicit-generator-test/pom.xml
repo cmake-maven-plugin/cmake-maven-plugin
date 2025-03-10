@@ -109,7 +109,6 @@
 						</goals>
 						<configuration>
 							<sourcePath>${project.basedir}</sourcePath>
-							<targetPath>${project.build.directory}</targetPath>
 							<generator>${generator}</generator>
 						</configuration>
 					</execution>
@@ -118,18 +117,12 @@
 						<goals>
 							<goal>compile</goal>
 						</goals>
-						<configuration>
-							<projectDirectory>${project.build.directory}</projectDirectory>
-						</configuration>
 					</execution>
 					<execution>
 						<id>cmake-test</id>
 						<goals>
 							<goal>test</goal>
 						</goals>
-						<configuration>
-							<buildDirectory>${project.build.directory}</buildDirectory>
-						</configuration>
 					</execution>
 				</executions>
 			</plugin>

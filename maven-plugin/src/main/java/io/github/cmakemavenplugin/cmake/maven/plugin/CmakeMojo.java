@@ -49,7 +49,7 @@ public abstract class CmakeMojo extends AbstractMojo
 	@Parameter
 	private List<String> options;
 
-	private final MavenProject project;
+	protected final MavenProject project;
 	private final BuildPluginManager pluginManager;
 	private final MavenSession session;
 	private final Platform platform = Platform.detected();
@@ -89,16 +89,6 @@ public abstract class CmakeMojo extends AbstractMojo
 			return;
 		Path outputDirectory = Paths.get(project.getBuild().getDirectory(), "dependency/cmake");
 		downloadBinaries(outputDirectory);
-	}
-
-	/**
-	 * Returns this plugin's build directory.
-	 *
-	 * @return this plugin's build directory
-	 */
-	protected String getBuildDirectory()
-	{
-		return project.getBuild().getDirectory();
 	}
 
 	/**
