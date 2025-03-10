@@ -12,9 +12,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<cmake.binaries.dir>
-			${project.build.directory}${file.separator}manual-download${file.separator}bin
-		</cmake.binaries.dir>
+		<cmake.binaries.dir>${project.build.directory}/cmake/manual-download/bin</cmake.binaries.dir>
 		<cmake.download>false</cmake.download>
 	</properties>
 

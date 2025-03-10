@@ -72,7 +72,7 @@ public class TestMojo extends CmakeMojo
 	/**
 	 * The directory to run ctest in.
 	 */
-	@Parameter(defaultValue = "${project.build.directory}")
+	@Parameter(defaultValue = "${project.build.directory}/cmake")
 	private File projectDirectory;
 	/**
 	 * Value that lets Maven tests fail without causing the build to fail.

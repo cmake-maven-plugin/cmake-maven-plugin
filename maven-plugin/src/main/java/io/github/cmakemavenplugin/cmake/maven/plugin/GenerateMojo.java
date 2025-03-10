@@ -54,7 +54,7 @@ public class GenerateMojo extends CmakeMojo
 	/**
 	 * The output directory.
 	 */
-	@Parameter(defaultValue = "${project.build.directory}")
+	@Parameter(defaultValue = "${project.build.directory}/cmake")
 	private File projectDirectory;
 	/**
 	 * The makefile generator to use.

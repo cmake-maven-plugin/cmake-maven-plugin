@@ -50,7 +50,7 @@ public class CompileMojo extends CmakeMojo
 	/**
 	 * The directory containing the project file.
 	 */
-	@Parameter(defaultValue = "${project.build.directory}")
+	@Parameter(defaultValue = "${project.build.directory}/cmake")
 	private File projectDirectory;
 
 	/**

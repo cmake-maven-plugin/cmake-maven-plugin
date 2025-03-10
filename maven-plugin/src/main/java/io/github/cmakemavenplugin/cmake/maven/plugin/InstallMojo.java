@@ -57,7 +57,7 @@ public class InstallMojo extends CmakeMojo
 	/**
 	 * The project binary directory to install.
 	 */
-	@Parameter(defaultValue = "${project.build.directory}")
+	@Parameter(defaultValue = "${project.build.directory}/cmake")
 	private File projectDirectory;
 
 	/**

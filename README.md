@@ -29,7 +29,7 @@ migrated to GitHub (and Git) after Google Code shut down.
           <!-- The directory containing CMakeLists -->
         </sourcePath>
         <!-- Optional: The directory where project files will be written -->
-        <projectDirectory>${project.build.directory}</projectDirectory>
+        <projectDirectory>${project.build.directory}/cmake</projectDirectory>
         <generator>
           <!--
           Optional: Overrides the default generator used by cmake.
@@ -103,7 +103,7 @@ migrated to GitHub (and Git) after Google Code shut down.
       </goals>
       <configuration>
         <!-- Optional: "projectDirectory" from the "generate" goal -->
-	    <projectDirectory>${project.build.directory}</projectDirectory>
+	    <projectDirectory>${project.build.directory}/cmake</projectDirectory>
         <!-- Optional: do not fail the build on test failures. false by default. -->
         <ignoreTestFailure>true</ignoreTestFailure>
         <!-- Optional: Skip the tests. false by default -->
@@ -137,7 +137,7 @@ migrated to GitHub (and Git) after Google Code shut down.
           <!-- Optional: the build configuration (e.g. "x64|Release") -->
         </config>
         <!-- Optional: "projectDirectory" from the "generate" goal -->
-        <projectDirectory>${project.build.directory}</projectDirectory>
+        <projectDirectory>${project.build.directory}/cmake</projectDirectory>
         <prefix>
           <!--
           Optional: path prefix to the installation destination (e.g. "${user.home}/.local", or "/usr/local")

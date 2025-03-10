@@ -65,7 +65,7 @@
 						</goals>
 						<phase>package</phase>
 						<configuration>
-							<prefix>${project.build.directory}</prefix>
+							<prefix>${project.build.directory}/cmake</prefix>
 							<config>Debug</config>
 						</configuration>
 					</execution>
