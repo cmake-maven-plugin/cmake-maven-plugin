@@ -12,8 +12,6 @@ import java.io.InputStreamReader;
 
 /**
  * Mojo helper functions.
- *
- * @author Gili Tzabari
  */
 public final class Mojos
 {

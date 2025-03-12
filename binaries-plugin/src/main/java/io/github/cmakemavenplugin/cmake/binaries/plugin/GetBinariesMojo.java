@@ -55,8 +55,6 @@ import java.util.regex.Pattern;
 
 /**
  * Downloads and installs the CMake binaries into the local Maven repository.
- *
- * @author Gili Tzabari
  */
 @Mojo(name = "get-binaries", defaultPhase = LifecyclePhase.GENERATE_RESOURCES)
 public class GetBinariesMojo extends AbstractMojo
