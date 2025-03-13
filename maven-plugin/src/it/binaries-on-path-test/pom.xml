@@ -38,7 +38,7 @@
 									<type>jar</type>
 								</artifactItem>
 							</artifactItems>
-							<outputDirectory>${project.build.directory}/manual-download</outputDirectory>
+							<outputDirectory>${project.build.directory}/cmake/manual-download</outputDirectory>
 						</configuration>
 					</execution>
 				</executions>
