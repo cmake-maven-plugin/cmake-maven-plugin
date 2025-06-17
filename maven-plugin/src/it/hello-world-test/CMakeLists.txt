@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.18.4)
+cmake_minimum_required(VERSION 4.0.3)
 project(HelloTest)
 add_executable(hello-test main.c)
 

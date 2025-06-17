@@ -30,7 +30,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.m2/repository/*
-          key: "maven-${{ hashFiles('**/pom.xml') }}"
+          key: "${{ runner.OS }}-maven-${{ hashFiles('**/pom.xml') }}-tag-release"
 
       - name: Configure Git User
         run: |
@@ -76,17 +76,26 @@ jobs:
       COMMIT_ID: ${{ needs.tag-release.outputs.TAG }}
       FOR_RELEASE: true
   deploy:
-    needs: [ build ]
+    needs: [ tag-release, build ]
     name: Deploy
     runs-on: ubuntu-latest
     outputs:
       ID: ${{ steps.upload.outputs.ID }}
     steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+
+      - name: Configure Git User
+        run: |
+          git config user.email "cowwoc2020@gmail.com"
+          git config user.name "Gili Tzabari"
+
       - name: Download bundles
         uses: actions/download-artifact@v4
         with:
           merge-multiple: true
-          path: "${{ github.workspace }}/bundles/io/github/cmake-maven-plugin"
+          path: "${{ github.workspace }}/bundles"
 
       - name: Generate metadata
         shell: bash
@@ -106,6 +115,20 @@ jobs:
           # Remove the temporary key file immediately after import
           shred --remove "${GPG_KEY_FILE}"
           
+          # Based on https://unix.stackexchange.com/a/743986/60809
+          FINGERPRINT=$(gpg --list-secret-keys --with-colons | awk -F: '
+            $1 == "sec" {found = 1; next} 
+            found && $1 == "fpr" {print $10; exit}
+          ')
+          
+          if [ -z "${FINGERPRINT}" ]; then
+            echo "Error: Could not parse the secret key's fingerprint"
+            exit 1
+          fi
+          
+          # Set the secret key as default
+          echo "default-key ${FINGERPRINT}" >> ~/.gnupg/gpg.conf
+          
           # Define the temporary file location for the passphrase
           export GPG_PASSPHRASE_FILE="$(mktemp)"
 
@@ -115,22 +138,19 @@ jobs:
           # Setup a cleanup trap to remove the key after the job completes
           cleanup_gpg()
           {
-            # Based on https://unix.stackexchange.com/a/743986/60809
-            FINGERPRINT=$(gpg --list-secret-keys --with-colons | awk -F: '
-              $1 == "sec" {found = 1; next} 
-              found && $1 == "fpr" {print $10; exit}
-            ')
-            if [[ -n "${FINGERPRINT}" ]]; then
-              gpg --batch --yes --delete-secret-keys "${FINGERPRINT}"
-              gpg --batch --yes --delete-keys "${FINGERPRINT}"
-            fi
+            gpg --batch --yes --delete-secret-keys "${FINGERPRINT}"
+            gpg --batch --yes --delete-keys "${FINGERPRINT}"
             shred --remove --force "${GPG_PASSPHRASE_FILE}"
             unset GPG_PASSPHRASE_FILE
           }
           trap cleanup_gpg EXIT
           
+          echo -----gili1
+          ls -laR .
+          echo -----gili2
+
           # Sign and generate checksums for all JAR and POM files
-          cd bundles 
+          cd bundles/cmake-maven-plugin-bundle/.m2/repository
           find . -type f \( -name "*.jar" -o -name "*.pom" \) -exec sh -c '
             for file; do
               cat "${GPG_PASSPHRASE_FILE}" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --yes \
@@ -146,7 +166,8 @@ jobs:
           cleanup_gpg
           trap - EXIT
 
-          zip -r "../cmake-maven-plugin-${{ needs.tag-release.outputs.VERSION }}.zip" .
+          zip -r "../../../../cmake-maven-plugin-${{ needs.tag-release.outputs.VERSION }}.zip" .
+          cd ../../../..
 
       - name: Upload bundle
         id: upload

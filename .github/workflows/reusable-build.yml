@@ -1,4 +1,4 @@
-name: Build
+name: Reusable Build
 on:
   workflow_call:
     inputs:
@@ -38,6 +38,9 @@ jobs:
       - name: Install Java
         uses: actions/setup-java@v4
         with:
+          # Temurin does not support JDK 8 on "macos-latest" or ARM64:
+          # https://github.com/actions/setup-java/issues/644#issuecomment-2340593737
+          # https://github.com/actions/setup-java/issues/734
           distribution: zulu
           java-version: 8
 
@@ -47,8 +50,8 @@ jobs:
           # Avoid caching the generated artifacts
           path: |
             ~/.m2/repository/*
-            !~/.m2/repository/io/github/cmake-maven-plugin
-          key: "${{ matrix.runtime }}-maven-${{ hashFiles('**/pom.xml') }}"
+            !~/.m2/repository/io/github/cmake-maven-plugin/
+          key: "${{ matrix.runtime }}-maven-${{ hashFiles('**/pom.xml') }}-build"
 
       # Maven command-line options:
       # --batch-mode: recommended in CI to inform maven to not run in interactive mode (less logs)
@@ -57,9 +60,6 @@ jobs:
       #                           having to crawl the workspace files to see the cause).
       # -e: Display stack-traces on failure
       # -P release: activate the "release" profile
-      #
-      # We need to use the "install" phase before running integration tests; otherwise,
-      # maven-invoker-plugin:install will fail.
       - name: Build
         shell: bash
         run: |
@@ -150,7 +150,7 @@ jobs:
                 <type>jdk</type>
                 <provides>
                   <version>8</version>
-                  <vendor>temurin</vendor>
+                  <vendor>zulu</vendor>
                 </provides>
                 <configuration>
                   <jdkHome>${JAVA_HOME}</jdkHome>

@@ -5,12 +5,12 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>io.github.cmake-maven-plugin</groupId>
 	<artifactId>cmake</artifactId>
-	<version>3.31.6-b2-SNAPSHOT</version>
+	<version>4.0.3-b1-SNAPSHOT</version>
 	<packaging>pom</packaging>
 	<name>CMake</name>
 	<description>Builds or tests native code using the CMake build system</description>
-
 	<url>https://github.com/cmake-maven-plugin/cmake-maven-plugin</url>
+
 	<licenses>
 		<license>
 			<name>The Apache Software License, Version 2.0</name>
@@ -192,18 +192,6 @@
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-javadoc-plugin</artifactId>
 					<version>3.11.2</version>
-				</plugin>
-				<plugin>
-					<groupId>org.apache.maven.plugins</groupId>
-					<artifactId>maven-deploy-plugin</artifactId>
-					<version>3.1.4</version>
-					<configuration>
-						<deployAtEnd>true</deployAtEnd>
-						<altReleaseDeploymentRepository>
-							<!-- Based on https://gist.github.com/cstamas/69e6365bbb70521923020d68369bf8e5 -->
-							maven-central-releases::https://${staging_host}/service/local/staging/deployByRepositoryId/${staging_repository_id}
-						</altReleaseDeploymentRepository>
-					</configuration>
 				</plugin>
 				<plugin>
 					<groupId>org.codehaus.mojo</groupId>
