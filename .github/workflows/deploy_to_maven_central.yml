@@ -145,12 +145,14 @@ jobs:
           }
           trap cleanup_gpg EXIT
           
-          echo -----gili1
-          ls -laR .
-          echo -----gili2
+          # Insert the expected repository name in front of the bundled directories
+          mkdir -p expected/io/github/cmake-maven-plugin/
+          mv bundles/* expected/io/github/cmake-maven-plugin/
+          rmdir bundles
+          mv expected bundles
 
           # Sign and generate checksums for all JAR and POM files
-          cd bundles/cmake-maven-plugin-bundle/.m2/repository
+          cd bundles/
           find . -type f \( -name "*.jar" -o -name "*.pom" \) -exec sh -c '
             for file; do
               cat "${GPG_PASSPHRASE_FILE}" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --yes \
@@ -166,8 +168,8 @@ jobs:
           cleanup_gpg
           trap - EXIT
 
-          zip -r "../../../../cmake-maven-plugin-${{ needs.tag-release.outputs.VERSION }}.zip" .
-          cd ../../../..
+          zip -r "../cmake-maven-plugin-${{ needs.tag-release.outputs.VERSION }}.zip" .
+          cd ..
 
       - name: Upload bundle
         id: upload
