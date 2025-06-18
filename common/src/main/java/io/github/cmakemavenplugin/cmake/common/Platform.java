@@ -164,7 +164,7 @@ public final class Platform
 	/**
 	 * Returns the suffix to append to the cmake executables.
 	 *
-	 * @return the suffix to append to the cmake executables
+	 * @return the suffix
 	 * @throws UnsupportedOperationException if <a href="https://cmake.org/download/">CMake's website</a>
 	 *                                       does not provide binaries for this platform
 	 */

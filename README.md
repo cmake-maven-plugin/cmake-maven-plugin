@@ -16,7 +16,7 @@ project's pom.xml file.
 <plugin>
   <groupId>io.github.cmake-maven-plugin</groupId>
   <artifactId>cmake-maven-plugin</artifactId>
-  <version>3.31.6-b1-SNAPSHOT</version>
+  <version>4.0.3-b1-SNAPSHOT</version>
   <executions>
     <execution>
       <id>cmake-generate</id>
@@ -63,7 +63,7 @@ project's pom.xml file.
 <plugin>
   <groupId>io.github.cmake-maven-plugin</groupId>
   <artifactId>cmake-maven-plugin</artifactId>
-  <version>3.31.6-b1-SNAPSHOT</version>
+  <version>4.0.3-b1-SNAPSHOT</version>
   <executions>
     <execution>
       <id>cmake-compile</id>
@@ -93,7 +93,7 @@ project's pom.xml file.
 <plugin>
   <groupId>io.github.cmake-maven-plugin</groupId>
   <artifactId>cmake-maven-plugin</artifactId>
-  <version>3.31.6-b1-SNAPSHOT</version>
+  <version>4.0.3-b1-SNAPSHOT</version>
   <executions>
     <execution>
       <id>cmake-test</id>
@@ -124,7 +124,7 @@ project's pom.xml file.
 <plugin>
   <groupId>io.github.cmake-maven-plugin</groupId>
   <artifactId>cmake-maven-plugin</artifactId>
-  <version>3.31.6-b1-SNAPSHOT</version>
+  <version>4.0.3-b1-SNAPSHOT</version>
   <executions>
     <execution>
       <id>cmake-install</id>

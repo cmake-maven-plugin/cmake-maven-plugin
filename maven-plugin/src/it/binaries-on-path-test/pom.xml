@@ -49,7 +49,7 @@
 				<version>${cmake.plugin.version}</version>
 				<configuration>
 					<environmentVariables>
-						<PATH>${env.PATH}${path.separator}${cmake.binaries.dir}</PATH>
+						<PATH>${cmake.binaries.dir}${path.separator}${env.PATH}</PATH>
 					</environmentVariables>
 				</configuration>
 				<executions>
