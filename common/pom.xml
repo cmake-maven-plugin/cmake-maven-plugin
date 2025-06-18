@@ -8,6 +8,7 @@
 		<version>4.0.3-b1-SNAPSHOT</version>
 	</parent>
 	<artifactId>cmake-common</artifactId>
+	<name>cmake-common</name>
 	<description>Code that is used by multiple modules</description>
 
 	<dependencies>

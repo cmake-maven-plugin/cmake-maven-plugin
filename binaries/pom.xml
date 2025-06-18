@@ -9,6 +9,7 @@
 	</parent>
 	<artifactId>cmake-binaries</artifactId>
 	<packaging>pom</packaging>
+	<name>cmake-binaries</name>
 	<description>Builds native code</description>
 
 	<build>

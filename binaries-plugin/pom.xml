@@ -12,6 +12,7 @@
 	</prerequisites>
 	<artifactId>cmake-binaries-plugin</artifactId>
 	<packaging>maven-plugin</packaging>
+	<name>cmake-binaries-plugin</name>
 	<description>Downloads the CMake binaries</description>
 
 	<dependencies>

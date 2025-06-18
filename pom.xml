@@ -7,7 +7,7 @@
 	<artifactId>cmake</artifactId>
 	<version>4.0.3-b1-SNAPSHOT</version>
 	<packaging>pom</packaging>
-	<name>CMake</name>
+	<name>cmake</name>
 	<description>Builds or tests native code using the CMake build system</description>
 	<url>https://github.com/cmake-maven-plugin/cmake-maven-plugin</url>
 
