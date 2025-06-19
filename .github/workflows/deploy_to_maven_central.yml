@@ -110,24 +110,27 @@ jobs:
           echo "${MAVEN_GPG_PRIVATE_KEY}" > "${GPG_KEY_FILE}"
           
           # Import the private key into the GPG keychain
-          gpg --batch --import "${GPG_KEY_FILE}"
-          
+          IMPORTED_KEY=$(gpg --batch --import "${GPG_KEY_FILE}" 2>&1)
+
           # Remove the temporary key file immediately after import
           shred --remove "${GPG_KEY_FILE}"
+
+          GPG_KEY_ID=$(echo "$IMPORTED_KEY" | tr -d '\r' | awk '/^gpg: key .*: secret key imported$/ \
+            { print $3; exit }')
+          # Strip away trailing colon
+          GPG_KEY_ID=${GPG_KEY_ID%:}
           
-          # Based on https://unix.stackexchange.com/a/743986/60809
-          FINGERPRINT=$(gpg --list-secret-keys --with-colons | awk -F: '
-            $1 == "sec" {found = 1; next} 
-            found && $1 == "fpr" {print $10; exit}
-          ')
-          
-          if [ -z "${FINGERPRINT}" ]; then
-            echo "Error: Could not parse the secret key's fingerprint"
+          if [ -z "${GPG_KEY_ID}" ]; then
+            echo "Error: Could not parse the secret key's ID"
             exit 1
           fi
           
-          # Set the secret key as default
-          echo "default-key ${FINGERPRINT}" >> ~/.gnupg/gpg.conf
+          # --batch requires the use of the key's fingerprint
+          # Based on https://unix.stackexchange.com/a/743986/60809
+          export GPG_KEY_ID=$(gpg --list-secret-keys --with-colons | awk -F: -v keyid="${GPG_KEY_ID}" '
+            $1 == "sec" && $5 == keyid { found=1; next }
+            found && $1 == "fpr" {print $10; exit}
+          ')
           
           # Define the temporary file location for the passphrase
           export GPG_PASSPHRASE_FILE="$(mktemp)"
@@ -138,8 +141,8 @@ jobs:
           # Setup a cleanup trap to remove the key after the job completes
           cleanup_gpg()
           {
-            gpg --batch --yes --delete-secret-keys "${FINGERPRINT}"
-            gpg --batch --yes --delete-keys "${FINGERPRINT}"
+            gpg --batch --yes --delete-secret-keys "${GPG_KEY_ID}"
+            gpg --batch --yes --delete-keys "${GPG_KEY_ID}"
             shred --remove --force "${GPG_PASSPHRASE_FILE}"
             unset GPG_PASSPHRASE_FILE
           }
@@ -154,8 +157,9 @@ jobs:
           cd publish/
           find . -type f \( -name "*.jar" -o -name "*.pom" \) -exec sh -c '
             for file; do
+              # Reminder: this block only sees exported variables
               cat "${GPG_PASSPHRASE_FILE}" | gpg --batch --pinentry-mode loopback --passphrase-fd 0 --yes \
-                --detach-sign --armor -o "${file}.asc" "${file}"
+                --detach-sign --armor --local-user ${GPG_KEY_ID} -o "${file}.asc" "${file}"
               md5sum "${file}" | awk "{print \$1}" > "${file}.md5"
               sha1sum "${file}" | awk "{print \$1}" > "${file}.sha1"
               sha256sum "${file}" | awk "{print \$1}" > "${file}.sha256"
